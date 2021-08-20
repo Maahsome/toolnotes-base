@@ -1,0 +1,393 @@
+tool:
+  tool_name: jq
+  sections:
+  - section_name: Table Formatting
+    examples:
+    - description: Extract specific fields
+      language: bash
+      script: |
+        echo '[{
+            "name": "George",
+            "id": 12,
+            "email": "george@domain.com"
+        }, {
+            "name": "Jack",
+            "id": 18,
+            "email": "jack@domain.com"
+        }, {
+            "name": "Joe",
+            "id": 19,
+            "email": "joe@domain.com"
+        }]' | jq -r '.[] | "\(.id)\t\(.name)"'
+    - description: Extract specific fields with headers
+      language: bash
+      script: |
+        echo '[{
+            "name": "George",
+            "id": 12,
+            "email": "george@domain.com"
+        }, {
+            "name": "Jack",
+            "id": 18,
+            "email": "jack@domain.com"
+        }, {
+            "name": "Joe",
+            "id": 19,
+            "email": "joe@domain.com"
+        }]' | jq -r '(["ID","NAME"] | (., map(length*"-"))), (.[] | [.id, .name]) | @tsv'
+    - description: Format TAB separated with header row
+      language: bash
+      script: | 
+        echo '[{
+            "name": "George",
+            "id": 12,
+            "email": "george@domain.com"
+        }, {
+            "name": "Jack",
+            "id": 18,
+            "email": "jack@domain.com"
+        }, {
+            "name": "Joe",
+            "id": 19,
+            "email": "joe@domain.com"
+        }]' | jq '[.[]| with_entries( .key |= ascii_downcase ) ] | (.[0] |keys_unsorted | @tsv) , (.[]|.|map(.) |@tsv)'
+    - description: Store a format as an ENV
+      language: bash
+      script: |
+        export DBLIST_JQFORMAT='(["NAME","NAMESPACE"] | (., map(length*"-"))), (.items[] | [.metadata.name, .spec.global.dnsPrefix]) | @tsv'
+        echo '{
+          "items": [
+            {
+              "metadata": {
+                "name": "splicedb10"
+              },
+              "spec": {
+                "global": {
+                  "dnsPrefix": "noisy1966d",
+                  "addEnvironmentToDNSNames": true,
+                  "frameworkId": "REPLACE_ME"
+                }
+              }
+            },
+            {
+              "metadata": {
+                "name": "splicedb2"
+              },
+              "spec": {
+                "global": {
+                  "dnsPrefix": "noisy1964b",
+                  "addEnvironmentToDNSNames": true,
+                  "frameworkId": "REPLACE_ME"
+                }
+              }
+            }
+          ]
+        }' | jq -r ${DBLIST_JQFORMAT} | column -t
+    - description: Stored format in ENV with no header information
+      language: bash
+      script: | 
+        export DBLIST_NH_JQFORMAT='(.items[] | [.metadata.name, .spec.global.dnsPrefix]) | @tsv'
+        echo '{
+          "items": [
+            {
+              "metadata": {
+                "name": "splicedb10"
+              },
+              "spec": {
+                "global": {
+                  "dnsPrefix": "noisy1966d",
+                  "addEnvironmentToDNSNames": true,
+                  "frameworkId": "REPLACE_ME"
+                }
+              }
+            },
+            {
+              "metadata": {
+                "name": "splicedb2"
+              },
+              "spec": {
+                "global": {
+                  "dnsPrefix": "noisy1964b",
+                  "addEnvironmentToDNSNames": true,
+                  "frameworkId": "REPLACE_ME"
+                }
+              }
+            }
+          ]
+        }' | jq -r ${DBLIST_NH_JQFORMAT}
+  - section_name: Updating Values
+    examples:
+    - description: Updating a value for a KEY in JSON
+      long_description: |
+        Say we want to set the "apiVersion" and "image" to some specific values:
+        
+        apiVersion should be "apps/v1"
+        image should have a TAG of "v.1.16.5"
+      language: bash
+      script: |
+        echo '
+        {
+            "apiVersion": "extensions/v1beta1",
+            "kind": "Deployment",
+            "metadata": {
+                "labels": {
+                    "app": "cluster-autoscaler"
+                },
+                "name": "cluster-autoscaler",
+                "namespace": "kube-system"
+            },
+            "spec": {
+                "replicas": 1,
+                "template": {
+                    "spec": {
+                        "containers": [
+                            {
+                                "image": "us.gcr.io/k8s-artifacts-prod/autoscaling/cluster-autoscaler:v1.15.6",
+                                "imagePullPolicy": "Always",
+                                "name": "cluster-autoscaler",
+                                "terminationMessagePath": "/dev/termination-log",
+                                "terminationMessagePolicy": "File",
+                                "volumeMounts": [
+                                    {
+                                        "mountPath": "/etc/ssl/certs/ca-certificates.crt",
+                                        "name": "ssl-certs",
+                                        "readOnly": true
+                                    }
+                                ]
+                            }
+                        ],
+                        "dnsPolicy": "ClusterFirst"
+                    }
+                }
+            }
+        }
+        ' | jq '.apiVersion = "apps/v1" | .spec.template.spec.containers[0].image = "us.gcr.io/k8s-artifacts-prod/autoscaling/cluster-autoscaler:v1.16.5"'
+    - description: Updating a value for a KEY in JSON (real world example)
+      long_description: |
+        Say we want to set the "apiVersion" and "image" to some specific values:
+        
+        apiVersion should be "apps/v1"
+        image should have a TAG of "v.1.16.5"
+      language: bash
+      script: |
+        cat ~/tmp/dev6_cluster-autoscaler.json| jq '.apiVersion = "apps/v1"' | jq '.spec.template.spec.containers[0].image = "us.gcr.io/k8s-artifacts-prod/autoscaling/cluster-autoscaler:v1.16.5"' > ~/tmp/dev6_cluster-autoscaler-apps.json
+  - section_name: Adding KEYS
+    examples:
+    - description: Adding a key
+      language: bash
+      script: |
+        jq '.data.spec.mlmanager.mode += "production"' <path to file>
+        
+        jq '.Profiles[0]."Initial Text" += "wt 4134\/sdk"' ~/Library/ApplicationSupport/iTerm2/DynamicProfiles/DBAAS-4134
+        
+        jq '.Profiles[0]."Initial Text" += "wt 4134\/sdk"' ~/Library/ApplicationSupport/iTerm2/DynamicProfiles/DBAAS-4134 | sponge ~/Library/ApplicationSupport/iTerm2/DynamicProfiles/DBAAS-4134
+    - description: An "outer" encompassing key
+      long_description: |
+        We want to add "data:" as the outer-most key.
+      language: bash
+      script: |
+        echo '
+        {
+            "apiVersion": "extensions/v1beta1",
+            "kind": "Deployment",
+            "metadata": {
+                "labels": {
+                    "app": "cluster-autoscaler"
+                },
+                "name": "cluster-autoscaler",
+                "namespace": "kube-system"
+            },
+            "spec": {
+                "replicas": 1,
+                "template": {
+                    "spec": {
+                        "containers": [
+                            {
+                                "image": "us.gcr.io/k8s-artifacts-prod/autoscaling/cluster-autoscaler:v1.15.6",
+                                "imagePullPolicy": "Always",
+                                "name": "cluster-autoscaler",
+                                "terminationMessagePath": "/dev/termination-log",
+                                "terminationMessagePolicy": "File",
+                                "volumeMounts": [
+                                    {
+                                        "mountPath": "/etc/ssl/certs/ca-certificates.crt",
+                                        "name": "ssl-certs",
+                                        "readOnly": true
+                                    }
+                                ]
+                            }
+                        ],
+                        "dnsPolicy": "ClusterFirst"
+                    }
+                }
+            }
+        }
+        ' | jq '{"data": .}'
+    - description: Wrapping an inner object
+      long_description: |
+        *NOTE* this only works on sub-level items.  For instance, you could not put a wrapper around ".spec" in this way.
+      language: bash
+      script: |
+        echo '
+        {
+            "apiVersion": "extensions/v1beta1",
+            "kind": "Deployment",
+            "metadata": {
+                "labels": {
+                    "app": "cluster-autoscaler"
+                },
+                "name": "cluster-autoscaler",
+                "namespace": "kube-system"
+            },
+            "spec": {
+                "replicas": 1,
+                "template": {
+                    "spec": {
+                        "containers": [
+                            {
+                                "image": "us.gcr.io/k8s-artifacts-prod/autoscaling/cluster-autoscaler:v1.15.6",
+                                "imagePullPolicy": "Always",
+                                "name": "cluster-autoscaler",
+                                "terminationMessagePath": "/dev/termination-log",
+                                "terminationMessagePolicy": "File",
+                                "volumeMounts": [
+                                    {
+                                        "mountPath": "/etc/ssl/certs/ca-certificates.crt",
+                                        "name": "ssl-certs",
+                                        "readOnly": true
+                                    }
+                                ]
+                            }
+                        ],
+                        "dnsPolicy": "ClusterFirst"
+                    }
+                }
+            }
+        }
+        ' | jq '.spec = {"insidespec": .spec}'
+  - section_name: Deleting KEYS
+    examples:
+    - description: Delete some keys from an array of higher level keys
+      long_description: |
+        Given a structure that contains "mlflow" and "bobby" at the same level, each containing two keys that we want to remove.
+      language: bash
+      script: |
+        echo '
+        {
+          "data": {
+            "spec": {
+              "mlmanager": {
+                "bobby": {
+                  "image": {
+                    "environment": "azure",
+                    "mode": "production",
+                    "pullPolicy": "IfNotPresent",
+                    "pullSecrets": "regcred",
+                    "registry": "docker.io",
+                    "repository": "splicemachine/sm_k8_bobby:0.1.22"
+                  },
+                  "replicas": 1
+                },
+                "mlflow": {
+                  "image": {
+                    "environment": "azure",
+                    "mode": "production",
+                    "pullPolicy": "IfNotPresent",
+                    "pullSecrets": "regcred",
+                    "registry": "docker.io",
+                    "repository": "splicemachine/sm_k8_mlflow:0.1.22"
+                  },
+                  "port": {
+                    "bobby": 2375,
+                    "dash": 5003,
+                    "mlflow": 5001
+                  },
+                  "replicas": 1,
+                  "sageMakerRole": "arn:aws:iam::492738914134:role/nonprod-eks-dev6-sage-role"
+                }
+              }
+            }
+          }
+        }' | jq 'del(.data.spec.mlmanager["bobby", "mlflow"].image["environment","mode"])'
+    - description: Delete some keys from an array of higher level keys and re-add them at a level higher
+      long_description: |
+        Given a structure that contains "mlflow" and "bobby" at the same level, each containing two keys that we want to move to the same level as "mlflow" and "bobby"
+      language: bash
+      script: |
+        echo '
+        {
+          "data": {
+            "spec": {
+              "mlmanager": {
+                "bobby": {
+                  "image": {
+                    "environment": "azure",
+                    "mode": "production",
+                    "pullPolicy": "IfNotPresent",
+                    "pullSecrets": "regcred",
+                    "registry": "docker.io",
+                    "repository": "splicemachine/sm_k8_bobby:0.1.22"
+                  },
+                  "replicas": 1
+                },
+                "mlflow": {
+                  "image": {
+                    "environment": "azure",
+                    "mode": "production",
+                    "pullPolicy": "IfNotPresent",
+                    "pullSecrets": "regcred",
+                    "registry": "docker.io",
+                    "repository": "splicemachine/sm_k8_mlflow:0.1.22"
+                  },
+                  "port": {
+                    "bobby": 2375,
+                    "dash": 5003,
+                    "mlflow": 5001
+                  },
+                  "replicas": 1,
+                  "sageMakerRole": "arn:aws:iam::492738914134:role/nonprod-eks-dev6-sage-role"
+                }
+              }
+            }
+          }
+        }' | jq 'del(.data.spec.mlmanager["bobby", "mlflow"].image["environment","mode"])' | jq '.data.spec.mlmanager.environment += "azure"' | jq '.data.spec.mlmanager.mode += "production"' | jq -S .
+  - section_name: Extracting Key/Value from Array
+    examples:
+    - description: Match an array item and extract the data
+      long_description: |
+        AWS item names are configured in TAGs, which are represented as an Array of key/value pairs.  We match on the Key with "Name", and extract the value.  In this case we are also interested in the Public IP Address
+      language: bash
+      script: |
+        echo '{
+            "Reservations": [
+                {
+                    "Instances": [
+                        {
+                            "PrivateDnsName": "ip-172-31-40-212.ec2.internal",
+                            "PrivateIpAddress": "172.31.40.212",
+                            "ProductCodes": [],
+                            "PublicDnsName": "ec2-52-90-25-204.compute-1.amazonaws.com",
+                            "PublicIpAddress": "52.90.25.204",
+                            "Tags": [
+                                {
+                                    "Key": "Purpose",
+                                    "Value": "BuildDocker"
+                                },
+                                {
+                                    "Key": "Name",
+                                    "Value": "JRBuildMachine"
+                                }
+                            ]
+                        }
+                    ],
+                    "OwnerId": "492738914134",
+                    "ReservationId": "r-08327c20046097c9c"
+                }
+            ]
+        }' | jq -r '(.Reservations[].Instances[] | [(.Tags[] | select(.Key=="Name").Value),.PublicIpAddress]) | @tsv'
+    - description: Extracting AWS EC2 Name and Public IP Address
+      long_description: |
+        Query AWS EC2 items, extracting the Name from the Tags Array with a Key of "Name", and the PublicIpAddress as a normal item reference
+      language: bash
+      script: |
+        aws ec2 describe-instances --profile splice-nonprod | jq -r '(.Reservations[].Instances[] | [(.Tags[] | select(.Key=="Name").Value),.PublicIpAddress]) | @tsv'
