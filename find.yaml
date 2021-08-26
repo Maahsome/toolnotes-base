@@ -1,0 +1,9 @@
+tool:
+  tool_name: find
+  sections:
+  - section_name: General Commands
+    examples:
+    - description: List and cat all regular files.
+      language: bash
+      script: |
+        for i in $(find . -type f); do echo "------ ${i}----"; cat ${i}; done

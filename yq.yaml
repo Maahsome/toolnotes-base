@@ -1,0 +1,37 @@
+tool:
+  tool_name: yq
+  sections:
+  - section_name: General Commands
+    examples:
+    - description: Simple Usage Commands
+      long_description: |
+        yq v4.x version commands
+      language: bash
+      script: |
+        # pretty print a file
+        yq eval yaml_file.yaml
+        
+        # Output the first element in a YAML file that contains only an array
+        yq eval '.[0]' yaml_file.yaml
+
+        # Set or Overwrite a key to a value in a file
+        yq eval '.key = "newvalue"' --inplace yaml_file.yaml
+
+        # Merge two files and output
+        ya eval-all 'select(filename == "yaml_file1.yaml") * select(filename == "yaml_file2.yaml")' yaml_file1.yaml yaml_file2.yaml
+    - description: General Commands
+      long_description: |
+        yq v4.x version commands
+      language: bash
+      script: |
+        # version 
+        yq --version
+        # pipes (the trailing dash is important)
+        cat yaml_file.yaml | yq e '.keyname' -
+    - description: Update a TLS K8s secret
+      long_description: |
+        We have a tls/secret manifest for K8s, base64 encode a pem and inject into the file
+      language: bash
+      script: |
+        yq e ".data.\"tls.crt\" = \"$(cat pem_file.pem|base64)\"" tlssecret_manifest.yaml
+

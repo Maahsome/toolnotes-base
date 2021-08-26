@@ -1,0 +1,80 @@
+tool:
+  tool_name: kubectl
+  sections:
+  - section_name: General Commands
+    examples:
+    - description: Get API Resources
+      language: bash
+      script: |
+        kubectl api-resources -o wide
+    - description: One liner for decoding secret data
+      language: bash
+      script: |
+        kubectl get secret --namespace splice-system dev-openldap -o jsonpath="{.data.LDAP_ADMIN_PASSWORD}" | base64 --decode; echo
+        kubectl get secret --namespace splice-system dev-openldap -o jsonpath="{.data.LDAP_CONFIG_PASSWORD}" | base64 --decode; echo
+    - description: Node Information
+      language: bash
+      script: | 
+        kubectl get nodes --sort-by={.metadata.labels."kubernetes\.io\/role"}
+
+        kubectl get node --sort-by={.status.nodeInfo.kubeletVersion}
+
+        watch kubectl get node --sort-by={.status.nodeInfo.kubeletVersion}
+
+        watch "kubectl get nodes --sort-by={.metadata.labels.\"kubernetes\.io\/role\"}"
+
+        kubectl get nodes --sort-by=".status.conditions[?(@.reason == 'KubeletReady')].lastTransitionTime"
+    - description: Get deployment names in a namespace
+      language: bash
+      script: |
+        kubectl -n splice-system get deployments --selector=component=cloudmgr --no-headers -o custom-columns="NAME:.metadata.name"
+  - section_name: Patching
+    examples:
+    - description: Simple Values Update
+      language: bash
+      script: |
+        kubectl patch secret splicectl-api-tokens -p '{"data":{ "test":"testvalue","new":"newvalue"}}'
+    - description: Patch Node Labels
+      long_description: |
+        If we want to set node labels, we use this patching technique.
+      language: bash
+      script: |
+        for i in $(kubectl get nodes --no-headers | grep splice-core | awk '{ print $1 }');do kubectl patch node ${i} -p '{"metadata":{"labels":{"components":"core"}}}'
+
+        for i in $(kubectl get nodes --no-headers | grep splicedb | awk '{ print $1 }');do kubectl patch node ${i} -p '{"metadata":{"labels":{"components":"db"}}}'
+    - description: Whitelist patching
+      long_description: |
+        Notice the `\/` escaped slashes in the key name
+      language: bash
+      script: |
+        kubectl -n splice-system patch ingress splicectl-api -p '{"metadata":{"annotations":{"nginx.ingress.kubernetes.io\/whitelist-source-range":"23.20.251.250,3.238.139.253,73.94.107.106"}}}'
+    - description: Set TLS Details
+      long_description: |
+        Notice that the output from the following doesn't contain any `key` or `strategy` for the patch process.  So it will by default REPLACE the entire array/list of `.spec.tls` with the entire structure you define.
+      language: bash
+      script: |
+        curl -Ls https://raw.githubusercontent.com/kubernetes/kubernetes/master/api/openapi-spec/swagger.json | jq '.definitions["io.k8s.api.networking.v1.IngressSpec"]'
+
+        for i in $(kubectl -n cse427 get ingress | awk '{ print $1 }'); do kubectl -n cse427 patch ingress ${i} -p '{"spec":{"tls":[{"hosts":["cse427-splice-csadmin-hbase.splice-cs.engr.wustl.edu"], "secretName": "cse427-splice-csadmin-hbase.splice-cs.engr.wustl.edu"}]}}'; done
+    - description: Change an nginx-ingress label
+      language: bash
+      script: |
+        for i in $(kubectl -n splice-system get ingress --no-headers | awk '{print $1}'); do kubectl -n splice-system patch ingress ${i} -p '{"metadata":{"annotations":{"kubernetes.io\/ingress.class": "nginx"}}}'; done
+    - description: Create a configmap copy, and patching a statefulset
+      long_description: |
+        This is our first example where we are using the `--type='json'` patching method.  As you can see we are targetting the `0`th LIST/ARRAY item in the `volumes` key ('/volumes/`0`/'), and replacing the `configMap/name` with the defined `value`.  There is no `key` for the Volumes ARRAY/LIST, you can either re-define them ALL, or use the `--type='json'` method.
+      language: bash
+      script: |
+        # extract the original, rename with appended "-override"
+        kubectl -n azlarge11 get configmap splicedb-hbase-config -o json | kubectl neat | jq '.metadata.name = "splicedb-hbase-config-override"' | json2yaml > ~/tmp/hbase-config.yaml
+        # make changes
+        vi ~/tmp/hbase-config.yaml
+        kubectl -n azlarge create -f ~/tmp/hbase-config.yaml
+
+        # interesting using numeric references for array sections
+        kubectl -n azlarge11 patch statefulset splicedb-olap --type='json' -p='[{ "op": "replace", "path": "/spec/template/spec/volumes/0/configMap/name", "value": "splicedb-olap-config-override" }]'
+    - description: Removing a finalizer
+      language: bash
+      script: |
+        # kubectl patch ServiceInstance <service-instance-name> -p '{"metadata":{"finalizers":null}}' --type=merge
+        for i in $(kubectl -n longhorn-system get instancemanagers.longhorn.io | awk 'NR>1 { print $1 }');do kubectl -n longhorn-system patch instancemanagers.longhorn.io ${i} -p '{"metadata":{"finalizers":null}}' --type=merge; done
