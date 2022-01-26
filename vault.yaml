@@ -1,0 +1,31 @@
+tool:
+  tool_name: vault
+  sections:
+  - section_name: General Commands
+    examples:
+    - description: List Secret Engines
+      language: bash
+      script: |
+        vault secrets list | jq -r '. | keys[] as $k | "\($k)\t \(.[$k].type)"' | column -t
+  - section_name: PKI Commands
+    examples:
+    - description: List PKI Certificates
+      language: bash
+      script: |
+        vault list pki/certs | jq -r '.[]'
+    - description: Get a PKI Certificate by Fingerprint
+      language: bash
+      script: |
+        vault read -format=table -field=certificate pki/cert/2a-fe-59-d9-42-c0-81-62-f6-34-f4-d5-0f-8f-c1-e5-47-e8-f6-8e | openssl x509 -text -noout
+    - description: Get the Subject line for all PKI Certificates
+      language: bash
+      script: |
+        for i in $(vault list pki/certs | jq -r '.[]'); do 
+          echo "------${i}-----"
+          vault read -format=table -field=certificate pki/cert/${i} | openssl x509 -text -noout | grep 'Subject:'
+        done
+    - description: Get the Vault Root CA
+      language: bash
+      script: |
+        vault read -format=table -field=certificate pki/cert/ca
+        vault read -format=table -field=certificate pki/cert/ca | openssl x509 -text -noout

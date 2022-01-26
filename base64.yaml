@@ -1,0 +1,9 @@
+tool:
+  tool_name: base64
+  sections:
+  - section_name: General Commands
+    examples:
+    - description: Output the encoded data on a single line (no line ending)
+      language: bash
+      script: |
+        cat domain.crt | base64 -w 0

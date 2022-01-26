@@ -1,0 +1,104 @@
+tool:
+  tool_name: aws
+  sections:
+  - section_name: General
+    examples:
+    - description: AWS SSO Login
+      language: bash
+      script: |
+        # set your AWS_PROFILE
+        # possibly setup your account
+        aws-configure-sso
+        # run the web based authenticator
+        aws sso login
+  - section_name: CLI Usage
+    examples:
+    - description: Filtering Query
+      long_description: |
+        Use this page for extended filtering usage.  When supporting multiple cloud services it is
+        almost better to learn to use `jq` to post process and select fields.
+
+        - [Filtering / Query Page](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Filtering.html)
+      language: bash
+      script: |
+        aws ec2 describe-images --profile splice-sales \
+          --owners amazon \
+          --filters "Name=platform,Values=windows" "Name=root-device-type,Values=ebs" "Name=name,Values=Windows_Server-2016-English-Full-Base*"
+  - section_name: AWS Resources
+    examples:
+    - description: Get DNS Zone ID
+      long_description: |
+      language: bash
+      script: |
+        aws route53 --region $REGION list-hosted-zones-by-name | jq -r --arg DNS_ZONE "${DNS_ZONE}." '.HostedZones[] | select(.Name==$DNS_ZONE)' | jq -r .Id | cut -d '/' -f3 | tr -d '\n')
+    - description: Finding AMI
+      long_description: |
+      language: bash
+      script: |
+        aws ec2 describe-images --profile splice-sales \
+          --owners amazon \
+          --filters "Name=platform,Values=windows" "Name=root-device-type,Values=ebs" "Name=name,Values=Windows_Server-2016-English-Full-Base*"
+    - description: Launching a Windows 2016 Instance
+      long_description: |
+      language: bash
+      script: |
+        # t3.small, t3.medium, m5.xlarge, m5.8xlarge
+        INSTANCE_TYPE=t3.medium
+        REGION=us-east-1
+
+        INSTANCE_ID=$(aws ec2 run-instances --image-id ami-0cc5ea3dde5301489 --count 1 --instance-type ${INSTANCE_TYPE} --key-name splice-dcos --security-group-ids sg-0333bccac3168c3de --subnet-id subnet-78571a77 | jq -r '.Instances[0].InstanceId')
+
+        aws ec2 describe-instances --instance-ids ${INSTANCE_ID} | jq -r '.Reservations[0].Instances[0].PublicDnsName'
+    - description: Output All InstanceName and PublicIPs
+      long_description: |
+        This example will spit out the NAME/PUBLIC IP of all the instances.
+      language: bash
+      script: |
+        aws ec2 describe-instances --profile splice-nonprod | jq -r '(.Reservations[].Instances[] | [(.Tags[] | select(.Key=="Name").Value),.PublicIpAddress]) | @tsv'
+    - description: Specific Instance Name/PublicIP
+      long_description: |
+        This adds a filter to extract just the instance we are looking for 
+      language: bash
+      script: |
+        aws ec2 describe-instances --filters "Name=tag:Purpose,Values='BuildDocker'" --profile splice-nonprod | jq -r '(.Reservations[].Instances[] | [(.Tags[] | select(.Key=="Name").Value),.PublicIpAddress]) | @tsv'
+    - description: Specific Instance Name/PublicIP -> variable
+      long_description: |
+        This example just extracts the Public IP address to a variable
+      language: bash
+      script: |
+        INSTANCE_IP=$(aws ec2 describe-instances --filters "Name=tag:Purpose,Values='BuildDocker'" --profile splice-nonprod | jq -r '.Reservations[].Instances[].PublicIpAddress')
+        ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=2 -o StrictHostKeyChecking=no -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null ${INSTANCE_IP}
+    - description: Update DNS Recordset
+      long_description: |
+        Send and update for Route53 DNS
+      language: bash
+      script: |
+        echo "
+        {
+          "Comment": "Create new A record",
+          "Changes": [{
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+              "Name": "cm-bespoke-cmaahs.splicemachine-dev.io",
+              "Type": "A",
+              "TTL": 300,
+              "ResourceRecords": [{ "Value": "40.70.25.36"}]
+            }
+          }]
+        }
+        " > ~/tmp/aws_dns_record.json
+        aws route53 change-resource-record-sets --hosted-zone-id <ZONEID> --change-batch file://~/tmp/aws_dns_record.json
+    - description: S3 - Get a recursive list of files
+      long_description: |
+        Recurse through bucket folders
+      language: bash
+      script: |
+        aws --profile splice s3 ls s3://<bucket_name>/<folder1>/<folder2> --recursive
+    - description: S3 - Setting PUBLIC READ on a list of files
+      long_description: |
+        Set the PUBLIC READ flag on an entire bucket/directory
+      language: bash
+      script: |
+        # the pipe to jq is to defeat the PAGER, or unset PAGER
+        for i in $(aws --profile splice s3 ls s3://splice-demo/retail_demo/backups --recursive | awk '{ print $4 }'); do aws --profile splice s3api put-object-acl --bucket splice-demo --key ${i} --acl public-read | jq .; done
+

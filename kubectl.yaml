@@ -28,6 +28,10 @@ tool:
       language: bash
       script: |
         kubectl -n splice-system get deployments --selector=component=cloudmgr --no-headers -o custom-columns="NAME:.metadata.name"
+    - description: Get a list of Affinity Rules in Place
+      language: bash
+      script: |
+        kubectl -n platform-services get pods -o json | jq '.items[] | (.metadata.name, .spec.affinity)'
   - section_name: Patching
     examples:
     - description: Simple Values Update
@@ -78,3 +82,31 @@ tool:
       script: |
         # kubectl patch ServiceInstance <service-instance-name> -p '{"metadata":{"finalizers":null}}' --type=merge
         for i in $(kubectl -n longhorn-system get instancemanagers.longhorn.io | awk 'NR>1 { print $1 }');do kubectl -n longhorn-system patch instancemanagers.longhorn.io ${i} -p '{"metadata":{"finalizers":null}}' --type=merge; done
+  - section_name: Research / Query
+    examples:
+    - description: List the nodeSelector for PODs in a set of Namespaces
+      language: bash
+      script: |
+        # show all items
+        for n in platform-services tempo goldeneye example-apps; do kubectl get pods -o json -n ${n} | jq -r '.items[] | "\(.metadata.namespace)\t\(.metadata.name)\t\(.spec.nodeSelector.type)"'; done | column -t
+        # show only items WITHOUT a nodeSelector specified
+        for n in platform-services tempo goldeneye example-apps; do kubectl get pods -o json -n ${n} | jq -r '.items[] | "\(.metadata.namespace)\t\(.metadata.name)\t\(.spec.nodeSelector.type)"' | grep 'null$'; done | column -t
+        # show only items WITHOUT a nodeSelector specific in ALL namespaces
+        for n in $(kubectl get namespace --no-headers -o custom-columns="NAME:.metadata.name"); do kubectl get pods -o json -n ${n} | jq -r '.items[] | "\(.metadata.namespace)\t\(.metadata.name)\t\(.spec.nodeSelector.type)"' | grep 'null$'; done | column -t
+        # show only items WITHOUT a labels.ayx/team
+        for n in platform-services tempo goldeneye example-apps; do kubectl get pods -o json -n ${n} | jq -r '.items[] | "\(.metadata.namespace)\t\(.metadata.name)\t\(.metadata.labels."ayx/team")"' | grep 'null$'; done | column -t
+        # Capture output with RING column
+        RING=int; for n in platform-services tempo goldeneye example-apps; do kubectl get pods -o json -n ${n} | jq -r ".items[] | \"${RING}\t\(.metadata.namespace)\t\(.metadata.name)\t\(.metadata.labels.\"ayx/team\")\"" | grep 'null$'; done | column -t >> ~/tmp/missing_Labels.txt
+        RING=int; for n in platform-services tempo goldeneye example-apps; do kubectl get pods -o json -n ${n} | jq -r ".items[] | \"${RING}\t\(.metadata.namespace)\t\(.metadata.name)\t\(.spec.nodeSelector.type)\"" | grep 'null$'; done | column -t >> ~/tmp/missing_nodeSelectors.txt
+    - description: Get the IP Addresses for nodes with a specific selector label
+      language: bash
+      script: |
+        # Fetch the NODE IPAddresses for item tagged with 'type: eaas'
+        SELECTOR_LABEL=eaas; IP_ADDR=$(kubectl get nodes -o json | jq -r "(.items[] | select(.metadata.labels.type==\"${SELECTOR_LABEL}\") | .status | (.addresses[] | select(.type==\"InternalIP\").address))" | tr "\n" "|" | sed 's/|$//'); echo ${IP_ADDR}
+        # Display ALL the PODs running on NODES with matching IPAddresses
+        kubectl get pods -o json --all-namespaces | jq -r '.items[] | "\(.metadata.namespace)\t\(.metadata.name)\t\(.status.hostIP)"' | column -t | grep "${IP_ADDR}"
+    - description: Get the NODE `label.type` and associated IP address and pods with node IP address
+      language: bash
+      script: |
+        kubectl get nodes -o json | jq -r '.items[] | "\(.metadata.labels.type)\t\(.status.addresses[0].address)"' | column -t | sort
+        kubectl get pods -o json -n tempo | jq -r '.items[] | "\(.metadata.namespace)\t\(.metadata.name)\t\(.status.hostIP)"' | column -t

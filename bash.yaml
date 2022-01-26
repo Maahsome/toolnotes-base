@@ -1,0 +1,10 @@
+tool:
+  tool_name: bash
+  sections:
+  - section_name: General Commands
+    examples:
+    - description: Subtracting Characters from VARIABLE
+      language: bash
+      script: |
+        MYVAR=this-is-fun
+        echo ${MYVAR%%-fun}

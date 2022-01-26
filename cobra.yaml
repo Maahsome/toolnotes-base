@@ -1,0 +1,32 @@
+tool:
+  tool_name: cobra
+  sections:
+  - section_name: Project Scaffolding
+    examples:
+    - description: Create a new Project
+      long_description: |
+        You want to start a new go CLI tool project using cobra/viper
+      language: bash
+      script: |
+        mkdir my-app
+        cd my-app
+        cobra init --pkg-name my-app
+        go mod init my-app
+        # cobra init -pkg-name github.com/org/my-app
+        # go mod init github.com/org/my-app
+    - description: Add a command
+      long_description: |
+        You want to add a new command (my-app list) to your project
+      language: bash
+      script: |
+        cobra add list
+        # this creates cmdList as a command variable
+    - description: Add a sub-command
+      long_description: |
+        You want to add a new sub-command under list, named notes (my-app list notes), to your project
+      language: bash
+      script: |
+        cobra add notes -p cmdList
+        # this creates cmdNotes as a command variable
+        # be wary, adding a notes command under another parent command will also create cmdNotes
+

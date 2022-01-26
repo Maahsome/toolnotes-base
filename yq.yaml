@@ -34,4 +34,60 @@ tool:
       language: bash
       script: |
         yq e ".data.\"tls.crt\" = \"$(cat pem_file.pem|base64)\"" tlssecret_manifest.yaml
+  - section_name: Field Selection
+    examples:
+    - description: Select Multiple Fields onto Single Line
+      long_description: |
+        yq v4.x version commands
+      language: bash
+      script: |
+         for i in $(find . -name Chart.yaml); do cat ${i} | yq e '.dependencies[] | [(.name,.version)] | join ": "' -; done
+  - section_name: Adding Content
+    examples:
+    - description: Add a top level array item
+      long_description: |
+        We want to add an array item to the TOP level of the YAML doc.  In this case, we are adding a `- name: helm/ayx-platform-services-svc-orchestrator/my-broken-service`
+      language: bash
+      script: |
+        export helm_path=helm/ayx-platform-services-svc-orchestrator/my-broken-service
+        yq eval -i ". + {\"name\": \"${helm_path}\"}" version.yaml
+  - section_name: Updating Content
+    examples:
+    - description: Update an regular item, and an array item with a matching key-value
+      long_description: |
+        We want to update a ~/.kube/config format, with a new short value for cluster name
+      language: bash
+      script: |
+        # this matches and update on the same key
+        yq e -i ".contexts[] |= select(.name == \"${CURRENT_CONTEXT}\").name=\"${SHORT_CONTEXT}\"" ${KUBECONFIG}
+        # this is a simple straigh up key/value setting
+        yq e -i ".current-context = \"${SHORT_CONTEXT}\"" ${KUBECONFIG}
+    - description: Update inside an array and map
+      long_description: |
+        Some helmfile updates, deep into the 'set' key
+      language: bash
+      script: |
+        echo 'releases:
+          - chart: ../charts/foo
+            name: foo
+            namespace: '{{ .Values.stack }}'
+            values:
+              - ../config/templates/foo-values.yaml.gotmpl
+            set:
+              - name: image.tag
+                value: 22
+              - name: replicas
+                value: 1
+          - chart: ../charts/bar
+            name: bar
+            namespace: '{{ .Values.stack }}'
+            values:
+              - ../config/templates/bar-values.yaml.gotmpl
+            set:
+              - name: image.bar_proxy.tag
+                value: 46
+              - name: image.bar.tag
+                value: 29
+              - name: replicas
+                value: 1' | yq e '.releases[].set |= map(select(.name == "image.bar_proxy.tag").value=51)' -
 

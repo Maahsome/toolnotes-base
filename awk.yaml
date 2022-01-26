@@ -1,0 +1,9 @@
+tool:
+  tool_name: awk
+  sections:
+  - section_name: General Commands
+    examples:
+    - description: Suppress Starting Rows
+      language: bash
+      script: |
+        kubectl get pods | awk 'NR>1 { print $1 } '

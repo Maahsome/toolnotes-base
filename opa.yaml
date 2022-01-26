@@ -1,0 +1,10 @@
+tool:
+  tool_name: opa
+  sections:
+  - section_name: The Rego Playground
+    examples:
+    - description: Given a Kubernetes POD Input, create an INPUT for the Playground
+      language: bash
+      script: |
+        BASE_TPL='{\n    "kind": "AdmissionReview",\n    "parameters": {\n        "excludedContainers": [\n            "linkerd-proxy"\n        ]\n    },\n    "review": {\n        "kind": {\n            "kind": "Pod",\n            "version": "v1"\n        },\n        "object": {}\n    }\n}'
+        export NS=platform-services; export POD=assets-747ff5bbd6-52st6; echo ${BASE_TPL} | jq ".review.object.metadata += $(kubectl -n ${NS} get pod/${POD} -o json | jq .metadata) | .review.object.spec += $(kubectl -n ${NS} get pod/${POD} -o json | jq .spec)"

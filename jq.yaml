@@ -353,6 +353,10 @@ tool:
         }' | jq 'del(.data.spec.mlmanager["bobby", "mlflow"].image["environment","mode"])' | jq '.data.spec.mlmanager.environment += "azure"' | jq '.data.spec.mlmanager.mode += "production"' | jq -S .
   - section_name: Extracting Key/Value from Array
     examples:
+    - description: Print KEY and a Sub-Value
+      language: bash
+      script: |
+        vault secrets list | jq -r '. | keys[] as $k | "\($k)\t \(.[$k].type)"' | column -t
     - description: Match an array item and extract the data
       long_description: |
         AWS item names are configured in TAGs, which are represented as an Array of key/value pairs.  We match on the Key with "Name", and extract the value.  In this case we are also interested in the Public IP Address

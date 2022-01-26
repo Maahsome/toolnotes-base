@@ -1,0 +1,12 @@
+tool:
+  tool_name: psql
+  sections:
+  - section_name: General Commands
+    examples:
+    - description: Clear connections and DROP database
+      language: bash
+      script: |
+        SELECT pg_terminate_backend(pg_stat_activity.pid)
+        FROM pg_stat_activity
+        WHERE pg_stat_activity.datname = 'notifications' -- ← change this to your DB
+          AND pid <> pg_backend_pid(); DROP DATABASE 'notifications'; -- ← here too

@@ -1,0 +1,10 @@
+tool:
+  tool_name: test
+  sections:
+  - section_name: General Commands
+    examples:
+    - description: What does your example accomplish
+      language: bash
+      script: |
+        # comment
+        test this

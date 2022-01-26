@@ -1,0 +1,10 @@
+tool:
+  tool_name: docker
+  sections:
+  - section_name: General Commands
+    examples:
+    - description: Build setting multiple ARGs
+      language: bash
+      script: |
+        # the Dockerfile MUST have ARG statements, and they MUST appear AFTER the FROM line
+        docker build --build-arg VERSION=v1.2.3 --build-arg ARCH=amd64 -t IMAGE_TAG .
