@@ -1,6 +1,35 @@
 tool:
   tool_name: jq
   sections:
+  - section_name: Conditional Checks
+    examples:
+    - description: Does a key/name exist in an array
+      language: bash
+      script: |
+        echo '{
+          "list": [
+            {
+              "name": "sso_aws",
+              "start_url": "https://d-92671002fe.awsapps.com/start"
+            },
+            {
+              "name": "sso_aws_falkor_prod",
+              "start_url": "https://d-926771f9c7.awsapps.com/start"
+            },
+            {
+              "name": "sso_aws_falkor_dev_presidio",
+              "start_url": "https://d-92677c9d8e.awsapps.com/start"
+            },
+            {
+              "name": "sso_aws_falkor_prod_presidio",
+              "start_url": "https://d-92677f9a2d.awsapps.com/start"
+            },
+            {
+              "name": "sso_aws_falkor_dev",
+              "start_url": "https://d-92670ea8e4.awsapps.com/start"
+            }
+          ]
+        }' | jq '.list | any(.name == "sso_aws")'
   - section_name: Table Formatting
     examples:
     - description: Extract specific fields
@@ -173,6 +202,35 @@ tool:
         cat ~/tmp/dev6_cluster-autoscaler.json| jq '.apiVersion = "apps/v1"' | jq '.spec.template.spec.containers[0].image = "us.gcr.io/k8s-artifacts-prod/autoscaling/cluster-autoscaler:v1.16.5"' > ~/tmp/dev6_cluster-autoscaler-apps.json
   - section_name: Adding KEYS
     examples:
+    - description: Adding a new array item 
+      long_description: |
+        Say you have checked and found an array item with name="sso_new" does not exist, now you want to append an object to that array.
+      language: bash
+      script: |
+        echo '{
+          "list": [
+            {
+              "name": "sso_aws",
+              "start_url": "https://d-92671002fe.awsapps.com/start"
+            },
+            {
+              "name": "sso_aws_falkor_prod",
+              "start_url": "https://d-926771f9c7.awsapps.com/start"
+            },
+            {
+              "name": "sso_aws_falkor_dev_presidio",
+              "start_url": "https://d-92677c9d8e.awsapps.com/start"
+            },
+            {
+              "name": "sso_aws_falkor_prod_presidio",
+              "start_url": "https://d-92677f9a2d.awsapps.com/start"
+            },
+            {
+              "name": "sso_aws_falkor_dev",
+              "start_url": "https://d-92670ea8e4.awsapps.com/start"
+            }
+          ]
+        }' |  jq '.list[.list| length] |= . + {"name": "sso_new", "start_url": "https://d-1701dr2d2.awsapps.com/start"}'
     - description: Adding a key
       language: bash
       script: |

@@ -1,0 +1,11 @@
+tool:
+  tool_name: sips
+  sections:
+  - section_name: General Commands
+    examples:
+    - description: Convert from HEIC to PNG
+      language: bash
+      script: |
+        for f in *.heic
+          do sips -s format png "${f}" --out "${f%.*}.png"
+        done

@@ -1,0 +1,27 @@
+tool:
+  tool_name: git
+  sections:
+  - section_name: Tagging Commands
+    examples:
+    - description: Re-basing your local TAGs to the origin
+      language: bash
+      script: |
+        git checkout master
+        git fetch; git status; git pull
+        # DELETE ALL of your LOCAL TAGs.  They are wrong, after all...
+        git tag -d $(git tag)
+        # PULL the remote TAGs, this will re-base them to where they need to be
+        git fetch --tags
+    - description: Show TAG differences between local and origin
+      language: bash
+      script: |
+        LOCAL_TAGS=$(git show-ref --tags)
+        REMOTE_TAGS=$(git ls-remote --tags origin | sed 's/\t/ /g')
+        diff -c <(echo "${LOCAL_TAGS}") <(echo "${REMOTE_TAGS}")
+  - section_name: Log Commands
+    examples:
+    - description: Get the entire history of a file
+      language: bash
+      script: |
+        # -p produces the PATCH/DIFF at each commit
+        git log --follow -p -- <filepath>
