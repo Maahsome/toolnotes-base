@@ -1,0 +1,167 @@
+tool:
+  tool_name: gcloud
+  sections:
+  - section_name: General Commands
+    examples:
+    - description: Configure Login
+      language: bash
+      script: |
+        gcloud init
+    - description: Get Organization ID
+      language: bash
+      script: |
+        gcloud organizations list
+    - description: Create a Project
+      language: bash
+      script: |
+        gcloud resource-manager folders list --folder 709990655307
+
+        560284093146
+
+        gcloud projects create cj-dev --name="CJ Dev" --folder=560284093146
+  - section_name: Compute Commands
+    examples:
+    - description: SSH Into a VM
+      language: bash
+      script: |
+        gcloud --project my_project compute ssh my_vm
+    - description: List Regions
+      language: bash
+      script: |
+        gcloud compute regions list
+  - section_name: Configuration Commands
+    examples:
+    - description: List Configurations
+      language: bash
+      script: |
+        gcloud config configurations list
+    - description: Set Project
+      language: bash
+      script: |
+        gcloud config set project <project name>
+  - section_name: Container GKE Commands
+    examples:
+    - description: List of Valid GKE Versions
+      language: bash
+      script: |
+        region="us-east1"; kubernetes_version="1.18"; gcloud container get-server-config --region $region | sed -n -e "/validMasterVersions/,/validNodeVersions/p"
+    - description: List the GKE Versions for Each Release Channel
+      language: bash
+      script: |
+        for CHANNEL in $(region="us-east1"; gcloud container get-server-config --region $region --format="json(channels)" | jq -r '.channels[].channel'); do
+          echo "${CHANNEL}"
+          region="us-east1"
+          gcloud container get-server-config --region $region --format="json(channels)" 2> /dev/null | jq ".channels[] | select(.channel==\"${CHANNEL}\") | .validVersions"
+        done
+    - description: Create a GKE Using gcloud (old)
+      language: bash
+      script: |
+        gcloud beta container --project "gke-dev3" clusters create "gke-dev3" --zone "us-central1-c" --no-enable-basic-auth --cluster-version "1.14.10-gke.17" --machine-type "n1-standard-1" --image-type "COS" --disk-type "pd-standard" --disk-size "100" --metadata disable-legacy-endpoints=true --scopes "https://www.googleapis.com/auth/devstorage.read_only","https://www.googleapis.com/auth/logging.write","https://www.googleapis.com/auth/monitoring","https://www.googleapis.com/auth/servicecontrol","https://www.googleapis.com/auth/service.management.readonly","https://www.googleapis.com/auth/trace.append" --num-nodes "3" --enable-stackdriver-kubernetes --enable-ip-alias --network "projects/gke-dev3/global/networks/default" --subnetwork "projects/gke-dev3/regions/us-central1/subnetworks/default" --default-max-pods-per-node "110" --addons HorizontalPodAutoscaling,HttpLoadBalancing --enable-autoupgrade --enable-autorepair
+    - description: Curl POST to create a GKE
+      language: bash
+      script: |
+        POST https://container.googleapis.com/v1beta1/projects/gke-dev3/zones/us-central1-c/clusters { "cluster": { "name": "gke-dev3", "masterAuth": { "clientCertificateConfig": {} }, "network": "projects/gke-dev3/global/networks/default", "addonsConfig": { "httpLoadBalancing": {}, "horizontalPodAutoscaling": {}, "kubernetesDashboard": { "disabled": true }, "istioConfig": { "disabled": true }, "dnsCacheConfig": {} }, "subnetwork": "projects/gke-dev3/regions/us-central1/subnetworks/default", "nodePools": [ { "name": "default-pool", "config": { "machineType": "n1-standard-1", "diskSizeGb": 100, "oauthScopes": [ "https://www.googleapis.com/auth/devstorage.read_only", "https://www.googleapis.com/auth/logging.write", "https://www.googleapis.com/auth/monitoring", "https://www.googleapis.com/auth/servicecontrol", "https://www.googleapis.com/auth/service.management.readonly", "https://www.googleapis.com/auth/trace.append" ], "metadata": { "disable-legacy-endpoints": "true" }, "imageType": "COS", "diskType": "pd-standard" }, "initialNodeCount": 3, "autoscaling": {}, "management": { "autoUpgrade": true, "autoRepair": true }, "version": "1.14.10-gke.17" } ], "networkPolicy": {}, "ipAllocationPolicy": { "useIpAliases": true }, "masterAuthorizedNetworksConfig": {}, "defaultMaxPodsConstraint": { "maxPodsPerNode": "110" }, "authenticatorGroupsConfig": {}, "privateClusterConfig": {}, "databaseEncryption": { "state": "DECRYPTED" }, "clusterTelemetry": { "type": "ENABLED" }, "initialClusterVersion": "1.14.10-gke.17", "location": "us-central1-c" } }
+  - section_name: IAM Commands
+    examples:
+    - description: Create a Service Account
+      language: bash
+      script: |
+        # Service Account Creation
+        PROJECT_ID=gke-dev3
+        ACCOUNT_NAME=gke-dev3-sa
+        gcloud iam service-accounts create ${ACCOUNT_NAME} --display-name "${ACCOUNT_NAME} owner service account" --project ${PROJECT_ID}
+        # The "gcloud iam service-accounts create --help" reads:
+        #   To work with this service account in subsequent IAM commands, use the email
+        #   resulting from this call as the IAM_ACCOUNT argument.
+        # however, there is output, and it looks like this "Created service account [gke-dev3-sa]."
+        # and it DOES NOT come in on STDOUT.  Presumably this is a bug.
+        # The "create" call will ERROR on conflict, and the email resulting from the call seems like it will be predictable:
+        # cjgke-dev3-sa@gke-dev3.iam.gserviceaccount.com (account-name@project-id.iam.gserviceaccount.com)
+        # we can fetch/validate the email in a couple of ways:
+        # use the predictable email address, and validate that the one that comes back is the one we sent in
+        GCP_SERVICE_ACCOUNT_EMAIL=$(gcloud iam service-accounts list --filter="email='${ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com'" --format="value(email)")
+        # use what we know for sure we set: display-name
+        GCP_SERVICE_ACCOUNT_EMAIL=$(gcloud iam service-accounts list --filter="displayName='${ACCOUNT_NAME} owner service account'" --format="value(email)")
+
+        # Service Account Key Creation
+        gcloud iam service-accounts keys create ./${ACCOUNT_NAME}.json --iam-account=${GCP_SERVICE_ACCOUNT_EMAIL} --key-file-type=json
+        # push the account to vault
+        vault kv put secret/gcp/service_accounts/${ACCOUNT_NAME} jenkins_gcp_json=@./${SPLICE_ENV}-sa.json
+        # create a K8s secret yaml file
+        echo """
+        apiVersion: v1
+        data:
+          sa.json: $(cat ./${ACCOUNT_NAME}.json | base64)
+        kind: Secret
+        metadata:
+          name: gcp-creds
+          namespace: default
+        type: Opaque
+        """ > secret-gcp-creds.yaml
+
+        # Get a list of roles for IAM
+        ROLES_LIST=$(gcloud iam roles list --format=json | jq -r '.[].name')
+        echo $ROLES_LIST | grep owner
+
+        # Bind an IAM policy to the service account
+        gcloud projects add-iam-policy-binding ${PROJECT_ID} --member serviceAccount:${GCP_SERVICE_ACCOUNT_EMAIL} --role "roles/owner"
+  - section_name: RHEL Install gcloud
+    examples:
+    - description: Install google-cloud-sdk on RHEL/CentOS
+      language: bash
+      script: |
+        sudo tee -a /etc/yum.repos.d/google-cloud-sdk.repo << EOM
+        [google-cloud-sdk]
+        name=Google Cloud SDK
+        baseurl=https://packages.cloud.google.com/yum/repos/cloud-sdk-el7-x86_64
+        enabled=1
+        gpgcheck=1
+        repo_gpgcheck=1
+        gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+               https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+        EOM
+
+        yum install google-cloud-sdk
+  - section_name: KMS Commands
+    examples:
+    - description: Create a KMS Key
+      language: bash
+      script: |
+        gcloud kms keys create ${KEY} --location global --keyring ${KEYRING} --purpose encryption
+  - section_name: CURLing FUN
+    examples:
+    - description: Get some Account Billing Info
+      language: bash
+      script: |
+        BILLING_ACCOUNT=YOUR_ACCOUNT_GUID
+        curl -X PUT https://cloudbilling.googleapis.com/v1/projects/nonprod-gek-dev1/billingInfo -d '{"name": "projects/nonprod-gke-dev1/billingInfo","projectId": "nonprod-gke-dev1","billingAccountName": "billingAccounts/${BILLING_ACCOUNT}","billingEnabled": "true"}' -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Type: application/json; charset=utf-8"
+  - section_name: Project Commands
+    examples:
+    - description: General Commands
+      language: bash
+      script: |
+        gcloud projects list
+        gcloud config set project {projectid}
+        gcloud config get-value core/project
+  - section_name: Output, Fields, and Frustrations... Oh My
+    examples:
+    - description: Filtering Output from gcloud
+      long_description: |
+        The end-result is likely that one should learn `jq` very well, and use `--format json` and save some frustration...
+
+        You can simply use the HEADER row names as the `value()` names, comma separated.
+      language: bash
+      script: |
+        gcloud dns managed-zones list --format='value(name,dns_name)'
+        gcloud container clusters list --format='value(name,status)'
+        # real world example
+        gcloud container clusters list --format='value(name,status)' | grep '^nonprod-gke-dev3' | awk '{ print $2 }'
+  - section_name: Services Commands
+    examples:
+    - description: Basic Use
+      language: bash
+      script: |
+        gcloud services list --available
+        gcloud services list --enabled
+        gcloud services enable cloudkms.googleapis.com
+
