@@ -1,0 +1,29 @@
+tool:
+  tool_name: gitlab-tool
+  sections:
+  - section_name: General Commands
+    examples:
+    - description: Add a configuration for a base directory
+      language: bash
+      script: |
+        gitlab-tool config group --gitlab-host git.alteryx.com --group futurama --directory ~/dev/futurama --env-var GITLAB_TOKEN_ALTERYX
+        gitlab-tool config group --gitlab-host gitlab.com --group alteryx_futurama --directory ~/src/alteryx_futurama --env-var GITLAB_TOKEN_PUBLIC
+  - section_name: CICD Variables
+    examples:
+    - description: Get a list of variables
+      long_description: |
+        This command will WALK back up through the groups and list all the variable that will be used during a CICD pipeline for your project.  Start in a PROJECT directory, command may fail if started in a GROUP directory.
+      language: bash
+      script: |
+        gitlab-tool get variables -o json | jq -r '.[] | [.key,.source] | @tsv' | column -t
+    - description: Create `export` lines for TF_VAR named variables
+      long_description: |
+        If you need to run some terraform locally, and you want to export the variables that gitlab CICD will be setting, you can use this command to generate those exports.
+      language: bash
+      script: |
+        gitlab-tool get variables | grep TF_VAR | awk '{ print "export "$1"=\x27"$2$3$4$5$6$7"\x27"}' |pbcopy
+    - description: Extract the value from a specific variable
+      language: bash
+      script: |
+        gitlab-tool get variables -o json | jq -r '.[] | select(.key=="TF_VAR_secret_list").value'
+

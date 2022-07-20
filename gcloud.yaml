@@ -29,6 +29,10 @@ tool:
       language: bash
       script: |
         gcloud compute regions list
+    - description: Get Limits for a Region
+      language: bash
+      script: |
+        gcloud compute regions describe us-east4 | grep -C4 C2_CPU
   - section_name: Configuration Commands
     examples:
     - description: List Configurations
@@ -164,4 +168,10 @@ tool:
         gcloud services list --available
         gcloud services list --enabled
         gcloud services enable cloudkms.googleapis.com
+  - section_name: Network Commands
+    examples:
+    - description: List Static IP Addresses
+      language: bash
+      script: |
+        gcloud compute addresses list
 

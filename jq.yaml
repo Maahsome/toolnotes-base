@@ -66,7 +66,7 @@ tool:
         }]' | jq -r '(["ID","NAME"] | (., map(length*"-"))), (.[] | [.id, .name]) | @tsv'
     - description: Format TAB separated with header row
       language: bash
-      script: | 
+      script: |
         echo '[{
             "name": "George",
             "id": 12,
@@ -114,7 +114,7 @@ tool:
         }' | jq -r ${DBLIST_JQFORMAT} | column -t
     - description: Stored format in ENV with no header information
       language: bash
-      script: | 
+      script: |
         export DBLIST_NH_JQFORMAT='(.items[] | [.metadata.name, .spec.global.dnsPrefix]) | @tsv'
         echo '{
           "items": [
@@ -149,7 +149,7 @@ tool:
     - description: Updating a value for a KEY in JSON
       long_description: |
         Say we want to set the "apiVersion" and "image" to some specific values:
-        
+
         apiVersion should be "apps/v1"
         image should have a TAG of "v.1.16.5"
       language: bash
@@ -194,7 +194,7 @@ tool:
     - description: Updating a value for a KEY in JSON (real world example)
       long_description: |
         Say we want to set the "apiVersion" and "image" to some specific values:
-        
+
         apiVersion should be "apps/v1"
         image should have a TAG of "v.1.16.5"
       language: bash
@@ -202,7 +202,7 @@ tool:
         cat ~/tmp/dev6_cluster-autoscaler.json| jq '.apiVersion = "apps/v1"' | jq '.spec.template.spec.containers[0].image = "us.gcr.io/k8s-artifacts-prod/autoscaling/cluster-autoscaler:v1.16.5"' > ~/tmp/dev6_cluster-autoscaler-apps.json
   - section_name: Adding KEYS
     examples:
-    - description: Adding a new array item 
+    - description: Adding a new array item
       long_description: |
         Say you have checked and found an array item with name="sso_new" does not exist, now you want to append an object to that array.
       language: bash
@@ -235,9 +235,9 @@ tool:
       language: bash
       script: |
         jq '.data.spec.mlmanager.mode += "production"' <path to file>
-        
+
         jq '.Profiles[0]."Initial Text" += "wt 4134\/sdk"' ~/Library/ApplicationSupport/iTerm2/DynamicProfiles/DBAAS-4134
-        
+
         jq '.Profiles[0]."Initial Text" += "wt 4134\/sdk"' ~/Library/ApplicationSupport/iTerm2/DynamicProfiles/DBAAS-4134 | sponge ~/Library/ApplicationSupport/iTerm2/DynamicProfiles/DBAAS-4134
     - description: An "outer" encompassing key
       long_description: |
@@ -453,3 +453,32 @@ tool:
       language: bash
       script: |
         aws ec2 describe-instances --profile splice-nonprod | jq -r '(.Reservations[].Instances[] | [(.Tags[] | select(.Key=="Name").Value),.PublicIpAddress]) | @tsv'
+    - description: Displaying just the key names from an Array
+      language: bash
+      script: |
+        echo '{
+                "locals": [
+                  {
+                    "management_planes": [
+                      {
+                        "m-us-e4-d00001": [
+                          {
+                            "domain_name": "domain.one"
+                          }
+                        ]
+                      },
+                      {
+                        "m-us-w1-d00002": [
+                          {
+                            "domain_name": "domain.two"
+                          }
+                        ]
+                      }
+                    ],
+                    "region": "us-east4",
+                    "tf_state_project": "futurama-mp",
+                    "tf_state_region": "us-east4"
+                  }
+                ]
+              }' | jq -r '.locals[] | .management_planes[] | keys[]'
+
