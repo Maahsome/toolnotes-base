@@ -174,4 +174,15 @@ tool:
       language: bash
       script: |
         gcloud compute addresses list
+  - section_name: Registry Container, Artifact Commands
+    examples:
+    - description: Authenticating to the Registries
+      language: bash
+      script: |
+        # GCR Login
+        ## GCR Hostnames: gcr.io, asia.gcr.io, eu.gcr.io, us.gcr.io
+        gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://gcr.io
+        # GAR Login
+        # GAR Hostnames are specific to the region names, rather than a wider global region
+        gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://us-east4-docker.pkg.dev
 
