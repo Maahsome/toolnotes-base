@@ -185,4 +185,30 @@ tool:
         # GAR Login
         # GAR Hostnames are specific to the region names, rather than a wider global region
         gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://us-east4-docker.pkg.dev
+    - description: Authenticating to the Registries using JSON
+      language: bash
+      script: |
+        cat ~/.config/gcloud/m-us-e4-p00001-gar-admin.json | helm registry login -u _json_key --password-stdin https://us-docker.pkg.dev
+        helm pull oci://us-docker.pkg.dev/m-us-e4-p00001/helm/path/to/chartname --version 1.0.1-latest-ac93aee1
+  - section_name: Asset Reports
+    examples:
+    - description: Just give me all the things...
+      language: bash
+      script: |
+        gcloud asset search-all-resources --scope "projects/m-us-e4-p00001" --format json > ~/tmp/m-us-e4-p00001-resources.json
+        gcloud asset search-all-iam-policies --scope "projects/m-us-e4-p00001" --format json > ~/tmp/m-us-e4-p00001-policies.json
+  - section_name: Resource-Manager
+    examples:
+    - description: List the TOP Level Folders
+      language: bash
+      script: |
+        gcloud resource-manager folders list --organization=266328200403
+    - description: List the folder of a sub-folder
+      language: bash
+      script: |
+        gcloud resource-manager folders list --folder 689878017259
+    - description: Create a new Folder
+      language: bash
+      script: |
+        gcloud resource-manager folders create --display-name farnsworth --folder 689878017259
 
