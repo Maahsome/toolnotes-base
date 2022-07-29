@@ -8,3 +8,12 @@ tool:
       script: |
         MYVAR=this-is-fun
         echo ${MYVAR%%-fun}
+  - section_name: Control and Looping
+    examples:
+    - description: A simple count loop
+      language: bash
+      script: |
+        for ((i = 0 ; i < 5 ; i++)); do
+          echo "Welcome $i times."
+        done
+
